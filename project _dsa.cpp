@@ -17,15 +17,40 @@ struct patient{
     time_t arrival Time; 
     string condition;
 };
-struct compare{
-    bool operator()(const patient& a,const patient& b){
-        if(a.severity==b.severity)
-            return a.arrival>b.arrival;
-        return a.severity<b.severity;
-        
-    }
 
+// ---------- Aging settings ----------
+const double AGING_SECONDS = 600.0;   // 10 நிமிஷம் காத்திருந்தா priority +1
+bool agingEnabled = true;
+
+double priorityScore(const Patient& p, time_t now) {
+    double score = p.severity;
+    if (agingEnabled) score += difftime(now, p.arrivalTime) / AGING_SECONDS;
+    return score;
+}
+
+// ---------- Comparator for the heap ----------
+// true return பண்ணா => a-க்கு b-ஐ விட குறைந்த priority
+struct Compare {
+    time_t now;
+    Compare(time_t n = time(nullptr)) : now(n) {}
+    bool operator()(const Patient& a, const Patient& b) const {
+        double sa = priorityScore(a, now);
+        double sb = priorityScore(b, now);
+        if (sa == sb) {
+            if (a.arrivalTime == b.arrivalTime) return a.id > b.id;  // ஒரே second-ல வந்தா சிறிய ID முதல்
+            return a.arrivalTime > b.arrivalTime;                    // முதல்ல வந்தவர் முதல்
+        }
+        return sa < sb;                                              // அதிக score முதல்
+    }
 };
+
+// ---------- Helper functions ----------
+string fmtTime(double seconds) {
+    long s = (long)seconds;
+    ostringstream os;
+    os << s / 60 << "m " << setw(2) << setfill('0') << s % 60 << "s";
+    return os.str();
+}
 
 class hospital{
 private:
